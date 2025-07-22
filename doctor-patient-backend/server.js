@@ -6,7 +6,7 @@ const cors = require('cors');
 const app = express();
 
 // Middleware
-app.use(cors({ origin: process.env.NODE_ENV === 'production' ? 'https://your-frontend-domain.com' : '*' }));
+app.use(cors());
 app.use(express.json());
 
 // Validate environment variables
@@ -64,6 +64,39 @@ app.post('/api/doctors', async (req, res) => {
     res.status(201).json(doctor);
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/api/doctors/nearby', async (req, res) => {
+  try {
+    const { location, maxDistance = 5000 } = req.query;
+    
+    if (!location) {
+      return res.status(400).json({ error: 'Location is required' });
+    }
+
+    // Parse location (expected format: "latitude,longitude")
+    const [lat, lng] = location.split(',').map(Number);
+    
+    if (isNaN(lat) || isNaN(lng)) {
+      return res.status(400).json({ error: 'Invalid location format' });
+    }
+
+    const doctors = await Doctor.find({
+      location: {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [lng, lat]
+          },
+          $maxDistance: parseInt(maxDistance)
+        }
+      }
+    });
+
+    res.json(doctors);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
