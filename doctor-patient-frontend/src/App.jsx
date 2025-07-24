@@ -1,44 +1,46 @@
 import React, { useState } from 'react';
-import { Search, MapPin, User, Stethoscope, Building2, Loader2, CheckCircle, AlertCircle, Navigation } from 'lucide-react';
+import {
+  Search,
+  MapPin,
+  User,
+  Stethoscope,
+  Building2,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  Navigation,
+} from 'lucide-react';
+import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 
 // API Configuration
 const API_BASE_URL = 'https://the-squirrel-assignment-backend.onrender.com/api';
 const DEFAULT_LOCATION = { lat: 12.9716, lng: 77.5946 }; // Bangalore coordinates
 
-// Mock Google Maps API key (since we can't use real one in this environment)
-const GOOGLE_MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY';
-
-// Map Component (Simplified for this environment)
+// Map Component
 const Map = ({ center, onMapClick, selectedLocation }) => {
-  const handleClick = (e) => {
-    // Simulate map click with random coordinates near Bangalore
-    const randomLat = 12.9716 + (Math.random() - 0.5) * 0.1;
-    const randomLng = 77.5946 + (Math.random() - 0.5) * 0.1;
-    
-    if (onMapClick) {
-      onMapClick({
-        lat: randomLat,
-        lng: randomLng
-      });
-    }
+  const mapStyles = {
+    height: '400px',
+    width: '100%',
   };
 
   return (
-    <div 
-      className="h-[400px] bg-gray-100 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors"
-      onClick={handleClick}
-    >
-      <MapPin className="w-12 h-12 text-gray-400 mb-2" />
-      <p className="text-gray-600 font-medium">Click anywhere to select location</p>
-      <p className="text-gray-500 text-sm">Map integration placeholder</p>
-      {selectedLocation && (
-        <div className="mt-4 px-4 py-2 bg-blue-100 rounded-lg">
-          <p className="text-blue-800 text-sm font-medium">
-            Selected: {selectedLocation.lat.toFixed(4)}, {selectedLocation.lng.toFixed(4)}
-          </p>
-        </div>
-      )}
-    </div>
+    <LoadScript googleMapsApiKey={`AIzaSyDGd0iY598AZ7euJSZJyqdqM5jQz48M6kQ`}>
+      <GoogleMap
+        mapContainerStyle={mapStyles}
+        zoom={12}
+        center={center}
+        onClick={(e) => {
+          if (onMapClick) {
+            onMapClick({
+              lat: e.latLng.lat(),
+              lng: e.latLng.lng(),
+            });
+          }
+        }}
+      >
+        {selectedLocation && <Marker position={selectedLocation} />}
+      </GoogleMap>
+    </LoadScript>
   );
 };
 
@@ -49,7 +51,7 @@ const DoctorRegistrationForm = () => {
     specialty: '',
     address: '',
     phone: '',
-    email: ''
+    email: '',
   });
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,9 +60,9 @@ const DoctorRegistrationForm = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+      setErrors((prev) => ({ ...prev, [name]: '' }));
     }
   };
 
@@ -68,17 +70,18 @@ const DoctorRegistrationForm = () => {
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = 'Doctor name is required';
     if (!formData.specialty.trim()) newErrors.specialty = 'Specialty is required';
+    if (!formData.address.trim()) newErrors.address = 'Address is required';
     if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     if (!selectedLocation) newErrors.location = 'Please select a location on the map';
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       setMessage('Please fix the errors in the form');
       return;
@@ -96,12 +99,12 @@ const DoctorRegistrationForm = () => {
         body: JSON.stringify({
           name: formData.name,
           specialty: formData.specialty,
-          address: formData.address || 'Selected location on map',
+          address: formData.address,
           phone: formData.phone,
           email: formData.email,
           lat: selectedLocation.lat,
-          lng: selectedLocation.lng
-        })
+          lng: selectedLocation.lng,
+        }),
       });
 
       if (!response.ok) {
@@ -109,8 +112,7 @@ const DoctorRegistrationForm = () => {
         throw new Error(errorData.message || 'Registration failed');
       }
 
-      const data = await response.json();
-      
+      await response.json();
       setMessage('Doctor registered successfully!');
       setFormData({ name: '', specialty: '', address: '', phone: '', email: '' });
       setSelectedLocation(null);
@@ -151,8 +153,8 @@ const DoctorRegistrationForm = () => {
                   value={formData.name}
                   onChange={handleInputChange}
                   className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:outline-none ${
-                    errors.name 
-                      ? 'border-red-300 focus:border-red-500 bg-red-50' 
+                    errors.name
+                      ? 'border-red-300 focus:border-red-500 bg-red-50'
                       : 'border-gray-200 focus:border-blue-500 hover:border-gray-300'
                   }`}
                   placeholder="Enter your full name"
@@ -176,8 +178,8 @@ const DoctorRegistrationForm = () => {
                   value={formData.specialty}
                   onChange={handleInputChange}
                   className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:outline-none ${
-                    errors.specialty 
-                      ? 'border-red-300 focus:border-red-500 bg-red-50' 
+                    errors.specialty
+                      ? 'border-red-300 focus:border-red-500 bg-red-50'
                       : 'border-gray-200 focus:border-blue-500 hover:border-gray-300'
                   }`}
                   placeholder="e.g., Cardiologist, Pediatrician"
@@ -189,6 +191,31 @@ const DoctorRegistrationForm = () => {
                   </p>
                 )}
               </div>
+            </div>
+
+            <div className="space-y-2 mt-6">
+              <label className="flex items-center space-x-2 text-sm font-semibold text-gray-700">
+                <Building2 className="w-4 h-4" />
+                <span>Clinic Address</span>
+              </label>
+              <input
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleInputChange}
+                className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:outline-none ${
+                  errors.address
+                    ? 'border-red-300 focus:border-red-500 bg-red-50'
+                    : 'border-gray-200 focus:border-blue-500 hover:border-gray-300'
+                }`}
+                placeholder="Enter clinic address"
+              />
+              {errors.address && (
+                <p className="flex items-center space-x-1 text-sm text-red-600">
+                  <AlertCircle className="w-4 h-4" />
+                  <span>{errors.address}</span>
+                </p>
+              )}
             </div>
 
             <div className="grid md:grid-cols-2 gap-6 mt-6">
@@ -203,8 +230,8 @@ const DoctorRegistrationForm = () => {
                   value={formData.phone}
                   onChange={handleInputChange}
                   className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:outline-none ${
-                    errors.phone 
-                      ? 'border-red-300 focus:border-red-500 bg-red-50' 
+                    errors.phone
+                      ? 'border-red-300 focus:border-red-500 bg-red-50'
                       : 'border-gray-200 focus:border-blue-500 hover:border-gray-300'
                   }`}
                   placeholder="+91 XXXXX XXXXX"
@@ -228,8 +255,8 @@ const DoctorRegistrationForm = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 focus:outline-none ${
-                    errors.email 
-                      ? 'border-red-300 focus:border-red-500 bg-red-50' 
+                    errors.email
+                      ? 'border-red-300 focus:border-red-500 bg-red-50'
                       : 'border-gray-200 focus:border-blue-500 hover:border-gray-300'
                   }`}
                   placeholder="doctor@example.com"
@@ -248,18 +275,14 @@ const DoctorRegistrationForm = () => {
                 <MapPin className="w-4 h-4" />
                 <span>Clinic Location</span>
               </label>
-              
+
               <div className="rounded-xl overflow-hidden">
-                <Map 
+                <Map
                   center={DEFAULT_LOCATION}
                   onMapClick={(location) => {
                     setSelectedLocation(location);
-                    setFormData(prev => ({ 
-                      ...prev, 
-                      address: 'Selected location (click on map to change)' 
-                    }));
                     if (errors.location) {
-                      setErrors(prev => ({ ...prev, location: '' }));
+                      setErrors((prev) => ({ ...prev, location: '' }));
                     }
                   }}
                   selectedLocation={selectedLocation}
@@ -272,7 +295,6 @@ const DoctorRegistrationForm = () => {
                     <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
                     <div>
                       <p className="text-green-800 font-medium">Location Selected</p>
-                      <p className="text-green-700 text-sm mt-1">{formData.address}</p>
                       <p className="text-green-600 text-xs mt-1">
                         Coordinates: {selectedLocation.lat.toFixed(4)}, {selectedLocation.lng.toFixed(4)}
                       </p>
@@ -290,11 +312,13 @@ const DoctorRegistrationForm = () => {
             </div>
 
             {message && (
-              <div className={`rounded-xl p-4 mt-6 ${
-                message.includes('successfully') 
-                  ? 'bg-green-50 border border-green-200' 
-                  : 'bg-red-50 border border-red-200'
-              }`}>
+              <div
+                className={`rounded-xl p-4 mt-6 ${
+                  message.includes('successfully')
+                    ? 'bg-green-50 border border-green-200'
+                    : 'bg-red-50 border border-red-200'
+                }`}
+              >
                 <div className="flex items-center space-x-2">
                   {message.includes('successfully') ? (
                     <CheckCircle className="w-5 h-5 text-green-600" />
@@ -341,35 +365,37 @@ const PatientSearchForm = () => {
   const [error, setError] = useState('');
 
   const popularAreas = [
-    'JP Nagar', 'Koramangala', 'Whitefield', 
-    'Indiranagar', 'BTM Layout', 'Electronic City'
+    'JP Nagar',
+    'Koramangala',
+    'Whitefield',
+    'Indiranagar',
+    'BTM Layout',
+    'Electronic City',
   ];
 
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371; // Radius of the earth in km
     const dLat = deg2rad(lat2 - lat1);
-    const dLon = deg2rad(lon2 - lon1); 
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const d = R * c; // Distance in km
     return d < 1 ? `${Math.round(d * 1000)}m` : `${d.toFixed(1)}km`;
   };
 
   const deg2rad = (deg) => {
-    return deg * (Math.PI/180);
+    return deg * (Math.PI / 180);
   };
 
-  // Predefined coordinates for popular areas (fallback if geocoding fails)
   const areaCoordinates = {
     'JP Nagar': { lat: 12.9082, lng: 77.5903 },
-    'Koramangala': { lat: 12.9352, lng: 77.6245 },
-    'Whitefield': { lat: 12.9698, lng: 77.7500 },
-    'Indiranagar': { lat: 12.9719, lng: 77.6412 },
+    Koramangala: { lat: 12.9352, lng: 77.6245 },
+    Whitefield: { lat: 12.9698, lng: 77.7500 },
+    Indiranagar: { lat: 12.9719, lng: 77.6412 },
     'BTM Layout': { lat: 12.9165, lng: 77.6101 },
-    'Electronic City': { lat: 12.8456, lng: 77.6603 }
+    'Electronic City': { lat: 12.8456, lng: 77.6603 },
   };
 
   const handleSearch = async (location = searchQuery) => {
@@ -380,89 +406,80 @@ const PatientSearchForm = () => {
 
     setIsLoading(true);
     setError('');
-    
+
     try {
       let lat, lng;
 
-      // Check if it's a predefined area
       if (areaCoordinates[location]) {
         lat = areaCoordinates[location].lat;
         lng = areaCoordinates[location].lng;
       } else {
-        // For demo purposes, use Bangalore coordinates
-        // In real implementation, you would use Google Geocoding API
         lat = 12.9716 + (Math.random() - 0.5) * 0.1;
         lng = 77.5946 + (Math.random() - 0.5) * 0.1;
         console.log(`Geocoding ${location} to coordinates:`, { lat, lng });
       }
 
       console.log('Searching for doctors near:', { lat, lng, location });
-      
-      // Search for doctors near these coordinates
+
       const doctorsResponse = await fetch(
         `${API_BASE_URL}/doctors/nearby?lat=${lat}&lng=${lng}&maxDistance=5000`,
         {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-          }
+          },
         }
       );
 
       console.log('API Response status:', doctorsResponse.status);
-      
+
       if (!doctorsResponse.ok) {
         const errorText = await doctorsResponse.text();
         console.error('API Error:', errorText);
         throw new Error(`Failed to fetch doctors: ${doctorsResponse.status} ${doctorsResponse.statusText}`);
       }
-      
+
       const doctorsData = await doctorsResponse.json();
       console.log('Doctors data received:', doctorsData);
-      
+
       if (!Array.isArray(doctorsData)) {
         console.error('Invalid data format received:', doctorsData);
         throw new Error('Invalid data format received from server');
       }
-      
-      // Process the doctors data
-      const processedDoctors = doctorsData.map(doctor => {
+
+      const processedDoctors = doctorsData.map((doctor) => {
         console.log('Processing doctor:', doctor);
-        
-        // Handle different possible location formats
+
         let doctorLat, doctorLng;
-        
+
         if (doctor.location && doctor.location.coordinates) {
-          // MongoDB GeoJSON format: [lng, lat]
           doctorLng = doctor.location.coordinates[0];
           doctorLat = doctor.location.coordinates[1];
         } else if (doctor.lat && doctor.lng) {
-          // Direct lat/lng format
           doctorLat = doctor.lat;
           doctorLng = doctor.lng;
         } else {
           console.warn('No location data found for doctor:', doctor);
-          doctorLat = lat; // fallback to search location
+          doctorLat = lat;
           doctorLng = lng;
         }
-        
+
         const distance = calculateDistance(lat, lng, doctorLat, doctorLng);
-        
+
         return {
           ...doctor,
           doctorLat,
           doctorLng,
-          distance
+          distance,
         };
       });
-      
+
       console.log('Processed doctors:', processedDoctors);
       setDoctors(processedDoctors);
-      
+
       if (processedDoctors.length === 0) {
         setError(`No doctors found in ${location}. Try searching in a different area.`);
       }
-      
     } catch (error) {
       console.error('Search failed:', error);
       setError(error.message || 'Failed to search for doctors. Please try again.');
@@ -529,7 +546,7 @@ const PatientSearchForm = () => {
             <div>
               <p className="text-sm font-medium text-gray-700 mb-3">Quick search popular areas:</p>
               <div className="flex flex-wrap gap-2">
-                {popularAreas.map(area => (
+                {popularAreas.map((area) => (
                   <button
                     key={area}
                     onClick={() => handleQuickSearch(area)}
@@ -559,17 +576,16 @@ const PatientSearchForm = () => {
           {doctors.length > 0 && (
             <div className="mt-8">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-800">
-                  Available Doctors ({doctors.length})
-                </h3>
-                <div className="text-sm text-gray-600">
-                  Showing results for "{searchQuery}"
-                </div>
+                <h3 className="text-xl font-bold text-gray-800">Available Doctors ({doctors.length})</h3>
+                <div className="text-sm text-gray-600">Showing results for "{searchQuery}"</div>
               </div>
 
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {doctors.map((doctor) => (
-                  <div key={doctor._id} className="bg-gradient-to-br from-white to-gray-50 rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-200">
+                  <div
+                    key={doctor._id}
+                    className="bg-gradient-to-br from-white to-gray-50 rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-200"
+                  >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center space-x-3">
                         <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
@@ -599,10 +615,8 @@ const PatientSearchForm = () => {
                       </div>
 
                       <div className="flex items-center justify-between pt-2">
-                        <span className="text-green-600 font-semibold text-sm">
-                          📍 {doctor.distance}
-                        </span>
-                        <button 
+                        <span className="text-green-600 font-semibold text-sm">📍 {doctor.distance}</span>
+                        <button
                           className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors duration-200"
                           onClick={() => {
                             const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${doctor.doctorLat},${doctor.doctorLng}`;
@@ -687,9 +701,7 @@ const App = () => {
         </div>
       </header>
 
-      <main className="py-8">
-        {activeTab === 'doctor' ? <DoctorRegistrationForm /> : <PatientSearchForm />}
-      </main>
+      <main className="py-8">{activeTab === 'doctor' ? <DoctorRegistrationForm /> : <PatientSearchForm />}</main>
     </div>
   );
 };
