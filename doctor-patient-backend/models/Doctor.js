@@ -32,4 +32,9 @@ const doctorSchema = new mongoose.Schema({
 // Required for $near/$geoWithin queries
 doctorSchema.index({ location: '2dsphere' });
 
+// Future utility method for formatted location string
+doctorSchema.methods.getLocationString = function () {
+  return `(${this.location.coordinates[1]}, ${this.location.coordinates[0]})`;
+};
+
 export default mongoose.model('Doctor', doctorSchema);
