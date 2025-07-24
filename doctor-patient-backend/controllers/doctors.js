@@ -16,6 +16,7 @@ export const registerDoctor = async (req, res) => {
   }
 };
 
+
 export const findNearbyDoctors = async (req, res) => {
   try {
     const { lat, lng, maxDistance = 5000 } = req.query;
