@@ -1,5 +1,3 @@
-// utils/geospatial.js
-
 /**
  * Calculate distance between two coordinates in meters
  * (Haversine formula implementation)
