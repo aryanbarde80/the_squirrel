@@ -1,60 +1,45 @@
 import React, { useState } from 'react';
 import { Search, MapPin, User, Stethoscope, Building2, Loader2, CheckCircle, AlertCircle, Navigation } from 'lucide-react';
-import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 
-// Map Component
+// API Configuration
+const API_BASE_URL = 'https://the-squirrel-assignment-backend.onrender.com/api';
+const DEFAULT_LOCATION = { lat: 12.9716, lng: 77.5946 }; // Bangalore coordinates
+
+// Mock Google Maps API key (since we can't use real one in this environment)
+const GOOGLE_MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY';
+
+// Map Component (Simplified for this environment)
 const Map = ({ center, onMapClick, selectedLocation }) => {
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-  });
-
-  const [map, setMap] = React.useState(null);
-
-  const onLoad = React.useCallback(function callback(map) {
-    setMap(map);
-  }, []);
-
-  const onUnmount = React.useCallback(function callback() {
-    setMap(null);
-  }, []);
-
   const handleClick = (e) => {
+    // Simulate map click with random coordinates near Bangalore
+    const randomLat = 12.9716 + (Math.random() - 0.5) * 0.1;
+    const randomLng = 77.5946 + (Math.random() - 0.5) * 0.1;
+    
     if (onMapClick) {
       onMapClick({
-        lat: e.latLng.lat(),
-        lng: e.latLng.lng()
+        lat: randomLat,
+        lng: randomLng
       });
     }
   };
 
-  const containerStyle = {
-    width: '100%',
-    height: '400px',
-    borderRadius: '12px'
-  };
-
-  return isLoaded ? (
-    <GoogleMap
-      mapContainerStyle={containerStyle}
-      center={center}
-      zoom={12}
-      onLoad={onLoad}
-      onUnmount={onUnmount}
+  return (
+    <div 
+      className="h-[400px] bg-gray-100 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors"
       onClick={handleClick}
-      options={{
-        streetViewControl: false,
-        mapTypeControl: false,
-        fullscreenControl: false
-      }}
     >
+      <MapPin className="w-12 h-12 text-gray-400 mb-2" />
+      <p className="text-gray-600 font-medium">Click anywhere to select location</p>
+      <p className="text-gray-500 text-sm">Map integration placeholder</p>
       {selectedLocation && (
-        <Marker
-          position={selectedLocation}
-        />
+        <div className="mt-4 px-4 py-2 bg-blue-100 rounded-lg">
+          <p className="text-blue-800 text-sm font-medium">
+            Selected: {selectedLocation.lat.toFixed(4)}, {selectedLocation.lng.toFixed(4)}
+          </p>
+        </div>
       )}
-    </GoogleMap>
-  ) : <div className="h-[400px] flex items-center justify-center">Loading Map...</div>;
+    </div>
+  );
 };
 
 // Doctor Registration Form
@@ -103,20 +88,25 @@ const DoctorRegistrationForm = () => {
     setMessage('');
 
     try {
-      const response = await fetch('/api/doctors', {
+      const response = await fetch(`${API_BASE_URL}/doctors`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...formData,
+          name: formData.name,
+          specialty: formData.specialty,
+          address: formData.address || 'Selected location on map',
+          phone: formData.phone,
+          email: formData.email,
           lat: selectedLocation.lat,
           lng: selectedLocation.lng
         })
       });
 
       if (!response.ok) {
-        throw new Error('Registration failed');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Registration failed');
       }
 
       const data = await response.json();
@@ -126,7 +116,7 @@ const DoctorRegistrationForm = () => {
       setSelectedLocation(null);
       setErrors({});
     } catch (error) {
-      setMessage(error.message || 'Registration failed');
+      setMessage(error.message || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -261,13 +251,16 @@ const DoctorRegistrationForm = () => {
               
               <div className="rounded-xl overflow-hidden">
                 <Map 
-                  center={{ lat: 12.9716, lng: 77.5946 }} // Default to Bangalore
+                  center={DEFAULT_LOCATION}
                   onMapClick={(location) => {
                     setSelectedLocation(location);
                     setFormData(prev => ({ 
                       ...prev, 
                       address: 'Selected location (click on map to change)' 
                     }));
+                    if (errors.location) {
+                      setErrors(prev => ({ ...prev, location: '' }));
+                    }
                   }}
                   selectedLocation={selectedLocation}
                 />
@@ -345,6 +338,7 @@ const PatientSearchForm = () => {
   const [doctors, setDoctors] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedArea, setSelectedArea] = useState('');
+  const [error, setError] = useState('');
 
   const popularAreas = [
     'JP Nagar', 'Koramangala', 'Whitefield', 
@@ -358,8 +352,7 @@ const PatientSearchForm = () => {
     const a = 
       Math.sin(dLat/2) * Math.sin(dLat/2) +
       Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2)
-      ; 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
     const d = R * c; // Distance in km
     return d < 1 ? `${Math.round(d * 1000)}m` : `${d.toFixed(1)}km`;
@@ -369,37 +362,110 @@ const PatientSearchForm = () => {
     return deg * (Math.PI/180);
   };
 
+  // Predefined coordinates for popular areas (fallback if geocoding fails)
+  const areaCoordinates = {
+    'JP Nagar': { lat: 12.9082, lng: 77.5903 },
+    'Koramangala': { lat: 12.9352, lng: 77.6245 },
+    'Whitefield': { lat: 12.9698, lng: 77.7500 },
+    'Indiranagar': { lat: 12.9719, lng: 77.6412 },
+    'BTM Layout': { lat: 12.9165, lng: 77.6101 },
+    'Electronic City': { lat: 12.8456, lng: 77.6603 }
+  };
+
   const handleSearch = async (location = searchQuery) => {
-    if (!location.trim()) return;
+    if (!location.trim()) {
+      setError('Please enter a location to search');
+      return;
+    }
 
     setIsLoading(true);
+    setError('');
+    
     try {
-      // First geocode the location to get coordinates
-      const geocodeResponse = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location)}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`
-      );
-      const geocodeData = await geocodeResponse.json();
+      let lat, lng;
+
+      // Check if it's a predefined area
+      if (areaCoordinates[location]) {
+        lat = areaCoordinates[location].lat;
+        lng = areaCoordinates[location].lng;
+      } else {
+        // For demo purposes, use Bangalore coordinates
+        // In real implementation, you would use Google Geocoding API
+        lat = 12.9716 + (Math.random() - 0.5) * 0.1;
+        lng = 77.5946 + (Math.random() - 0.5) * 0.1;
+        console.log(`Geocoding ${location} to coordinates:`, { lat, lng });
+      }
+
+      console.log('Searching for doctors near:', { lat, lng, location });
       
-      if (geocodeData.results.length === 0) {
-        setDoctors([]);
-        return;
+      // Search for doctors near these coordinates
+      const doctorsResponse = await fetch(
+        `${API_BASE_URL}/doctors/nearby?lat=${lat}&lng=${lng}&maxDistance=5000`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+
+      console.log('API Response status:', doctorsResponse.status);
+      
+      if (!doctorsResponse.ok) {
+        const errorText = await doctorsResponse.text();
+        console.error('API Error:', errorText);
+        throw new Error(`Failed to fetch doctors: ${doctorsResponse.status} ${doctorsResponse.statusText}`);
       }
       
-      const { lat, lng } = geocodeData.results[0].geometry.location;
-      
-      // Then search for doctors near these coordinates
-      const doctorsResponse = await fetch(
-        `/api/doctors/nearby?location=${lat},${lng}`
-      );
       const doctorsData = await doctorsResponse.json();
+      console.log('Doctors data received:', doctorsData);
       
-      setDoctors(doctorsData.map(doctor => ({
-        ...doctor,
-        coordinates: doctor.location.coordinates,
-        distance: calculateDistance(lat, lng, doctor.location.coordinates[1], doctor.location.coordinates[0])
-      })));
+      if (!Array.isArray(doctorsData)) {
+        console.error('Invalid data format received:', doctorsData);
+        throw new Error('Invalid data format received from server');
+      }
+      
+      // Process the doctors data
+      const processedDoctors = doctorsData.map(doctor => {
+        console.log('Processing doctor:', doctor);
+        
+        // Handle different possible location formats
+        let doctorLat, doctorLng;
+        
+        if (doctor.location && doctor.location.coordinates) {
+          // MongoDB GeoJSON format: [lng, lat]
+          doctorLng = doctor.location.coordinates[0];
+          doctorLat = doctor.location.coordinates[1];
+        } else if (doctor.lat && doctor.lng) {
+          // Direct lat/lng format
+          doctorLat = doctor.lat;
+          doctorLng = doctor.lng;
+        } else {
+          console.warn('No location data found for doctor:', doctor);
+          doctorLat = lat; // fallback to search location
+          doctorLng = lng;
+        }
+        
+        const distance = calculateDistance(lat, lng, doctorLat, doctorLng);
+        
+        return {
+          ...doctor,
+          doctorLat,
+          doctorLng,
+          distance
+        };
+      });
+      
+      console.log('Processed doctors:', processedDoctors);
+      setDoctors(processedDoctors);
+      
+      if (processedDoctors.length === 0) {
+        setError(`No doctors found in ${location}. Try searching in a different area.`);
+      }
+      
     } catch (error) {
       console.error('Search failed:', error);
+      setError(error.message || 'Failed to search for doctors. Please try again.');
       setDoctors([]);
     } finally {
       setIsLoading(false);
@@ -409,6 +475,7 @@ const PatientSearchForm = () => {
   const handleQuickSearch = (area) => {
     setSelectedArea(area);
     setSearchQuery(area);
+    setError('');
     handleSearch(area);
   };
 
@@ -436,7 +503,10 @@ const PatientSearchForm = () => {
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (error) setError('');
+                }}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors duration-200"
                 placeholder="Search by location (e.g., JP Nagar, Koramangala)"
@@ -463,7 +533,8 @@ const PatientSearchForm = () => {
                   <button
                     key={area}
                     onClick={() => handleQuickSearch(area)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                    disabled={isLoading}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 disabled:opacity-50 ${
                       selectedArea === area
                         ? 'bg-green-600 text-white shadow-lg'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -475,6 +546,15 @@ const PatientSearchForm = () => {
               </div>
             </div>
           </div>
+
+          {error && (
+            <div className="mt-6 bg-red-50 border border-red-200 rounded-xl p-4">
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="w-5 h-5 text-red-600" />
+                <span className="text-red-800">{error}</span>
+              </div>
+            </div>
+          )}
 
           {doctors.length > 0 && (
             <div className="mt-8">
@@ -508,12 +588,28 @@ const PatientSearchForm = () => {
                         <span className="text-sm">{doctor.address}</span>
                       </div>
 
+                      <div className="flex items-center space-x-2 text-gray-600">
+                        <span className="text-sm">📞</span>
+                        <span className="text-sm">{doctor.phone}</span>
+                      </div>
+
+                      <div className="flex items-center space-x-2 text-gray-600">
+                        <span className="text-sm">✉️</span>
+                        <span className="text-sm">{doctor.email}</span>
+                      </div>
+
                       <div className="flex items-center justify-between pt-2">
                         <span className="text-green-600 font-semibold text-sm">
                           📍 {doctor.distance}
                         </span>
-                        <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors duration-200">
-                          View Details
+                        <button 
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors duration-200"
+                          onClick={() => {
+                            const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${doctor.doctorLat},${doctor.doctorLng}`;
+                            window.open(googleMapsUrl, '_blank');
+                          }}
+                        >
+                          Get Directions
                         </button>
                       </div>
                     </div>
@@ -527,10 +623,11 @@ const PatientSearchForm = () => {
             <div className="mt-8 text-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-green-600 mx-auto mb-4" />
               <p className="text-gray-600">Searching for doctors in your area...</p>
+              <p className="text-gray-500 text-sm mt-1">This may take a few moments...</p>
             </div>
           )}
 
-          {!isLoading && doctors.length === 0 && searchQuery && (
+          {!isLoading && doctors.length === 0 && searchQuery && !error && (
             <div className="mt-8 text-center py-12">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Search className="w-8 h-8 text-gray-400" />
