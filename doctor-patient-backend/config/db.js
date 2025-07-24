@@ -10,4 +10,6 @@ const connectDB = async () => {
     process.exit(1);
   }
 };
+
+// Ensures database connection using environment-based URI
 export default connectDB;
